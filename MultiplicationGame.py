@@ -137,10 +137,20 @@ class App:
 		content = tk.Frame(root)
 		
 		if content:
-
-			timer_frame = tk.LabelFrame(content,text= 'Timer')
-			if timer_frame:
-				timer_label = tk.Label(timer_frame, text = '15',font =("Arial", 35,'bold'))
+			f0 = tk.Frame(content)
+			if f0:
+				timer_frame = tk.LabelFrame(f0,text= 'Timer')
+				if timer_frame:
+					timer_label = tk.Label(timer_frame, text = '15',font =("Arial", 35,'bold'))
+				
+				
+				score_frame = tk.LabelFrame(f0,text= 'Score')
+				if score_frame:
+					f00 = tk.Frame(score_frame)
+					if f00:
+						score_label_won = tk.Label(f00, text = '15',font =("Arial", 35,'bold'),fg = self.check_button_bg)
+						score_label_all = tk.Label(f00, text = '/10',font =("Arial", 35,'bold'))
+					
 			
 			operation_frame = tk.LabelFrame(content,text = 'Operation')
 			if operation_frame:
@@ -157,9 +167,17 @@ class App:
 
 		
 		content.grid(sticky = 'nswe',padx = 5,pady = 5)
+		f0.grid(sticky = 'nswe'  )
 
 		timer_frame.grid(sticky = 'nswe')
-		timer_label.grid(sticky = '')
+		timer_label.grid(sticky = 'nswe')
+
+
+		score_frame.grid(sticky = 'nswe',row = 0,column = 1)
+		f00.grid(sticky='')
+		score_label_won.grid()
+		score_label_all.grid(row = 0,column = 1)
+		
 
 		operation_frame.grid(sticky = 'nswe',pady = (0,3))
 		f1.grid(sticky = '',pady = (0,10))
@@ -170,10 +188,13 @@ class App:
 		check_button.grid(sticky = 'nswe')
 		
 		make_dynamic(root)
-		make_dynamic(content,rows = ())
-
+		make_dynamic(content)
+		make_dynamic(f0)
 		make_dynamic(timer_frame)
 		make_dynamic(timer_label)
+		make_dynamic(score_frame)
+		#make_dynamic(f00)
+	
 
 		make_dynamic(operation_frame,uniform = True)
 
@@ -184,17 +205,39 @@ class App:
 		self.operation_entry = operation_entry
 		self.operation_label = operation_label
 		self.timer_label = timer_label
+		self.score_label_won = score_label_won
+		self.score_label_all = score_label_all
 		self.start_button = start_button
 		self.check_button = check_button
-		self.timer = None
 		
+		self.timer = None
+
 		self.configure_menubar()
 		self.configure_widgets()
+		self.reset()
 
 		#{{{{{{{{lauch the app}}}}}}}}
 		self.root.update()
 		self.root.minsize(self.root.winfo_width(), self.root.winfo_height()+10)
 		self.root.mainloop()
+
+	def reset(self):
+		if self.timer:
+			self.timer.stop()
+			self.timer = None
+		self.all_answers_counter = 0
+		self.right_answers_counter = 0
+		self.current_op_index = App.current_op_index
+		self.timer = None
+
+		self.score_label_won_var.set(self.right_answers_counter)
+		self.score_label_all_var.set('/%s'%self.all_answers_counter)
+		self.operation_entry_var.set('??')
+		self.operation_label_var.set('? x ? =')
+		self.timer_label_var.set(self.response_time)
+		shuffle(OPERATIONS)
+		self.disable_operation_entry()
+		self.on_start_animation()
 
 	def set_response_time(self,val):
 		if int(float(str(val))) == float(str(val)):
@@ -211,6 +254,7 @@ class App:
 		
 		if menubar:
 			filemenu = tk.Menu(menubar, tearoff=0)
+			filemenu.add_command(label="Reset" ,command = self.reset)
 			if filemenu:
 				def settings_command(*args):
 					top=tk.Toplevel(self.root)
@@ -317,6 +361,12 @@ class App:
 		self.timer_label_var = tk.StringVar() ; self.timer_label_var.set(str(self.response_time))
 		self.timer_label.configure(textvariable = self.timer_label_var)
 
+		self.score_label_won_var = tk.StringVar(); self.score_label_won_var.set(str(self.right_answers_counter))
+		self.score_label_won.configure(textvariable = self.score_label_won_var)
+
+		self.score_label_all_var = tk.StringVar(); self.score_label_all_var.set('/%s'%str(self.all_answers_counter))
+		self.score_label_all.configure(textvariable = self.score_label_all_var)
+
 		self.operation_label_var = tk.StringVar() ; self.operation_label_var.set('? x ? = ')
 		self.operation_label.configure(textvariable = self.operation_label_var)
 
@@ -370,9 +420,12 @@ class App:
 		if self.current_op_index == len(OPERATIONS)-1:
 			self.current_op_index = -1
 			shuffle(OPERATIONS)
-
+		#Enable the input space 
+		self.enable_operation_entry()
 		#Focus on the input space
 		self.operation_entry.focus()
+		# clear the entry space
+		self.operation_entry_var.set('')
 		#Create and Start the timer
 		self.timer = Timer(self.root,self.timer_label_var,self.response_time*1000,int(self.timer_step*1000))
 		self.timer.when_finished = self.check_button_command
@@ -383,14 +436,13 @@ class App:
 		# show the next operation
 		next_operation = OPERATIONS[self.current_op_index][0]
 		self.operation_label_var.set(next_operation)
-		# clear the entry space
-		self.operation_entry_var.set('')
+		
 		#disable the start button  {active, normal, disabled}
 		self.disable_start_button()
-		#Enable the input space 
-		self.enable_operation_entry()
 		#restore the default colors
 		self.on_start_animation()
+		#show rounds played  on screen
+		self.score_label_all_var.set('/%s'%self.all_answers_counter)
 
 	def check_button_command(self):
 		if not self.timer:
@@ -412,8 +464,13 @@ class App:
 		except:
 			user_input = -1
 		if int(user_input) == int(result):
+			
+			print('here')
+			#increment score counter and show on screen
 			self.right_answers_counter += 1 
+			self.score_label_won_var.set(self.right_answers_counter)
 			self.on_right_answer_animation()
+			
 		else:
 			self.on_wrong_answer_animation()
 		#disable the input space 
@@ -423,7 +480,6 @@ class App:
 	
 if __name__ == '__main__':
 	root = tk.Tk()
-	
 	the_app = App(root)
 	
 	
